@@ -23,8 +23,17 @@ int seconds = 0;
 int minutes = 24;
 int hours = 20;
 
+// BPM
+const int sensorPin = A0; 
+int sensorValue;
+
+const int threshold = 520; // todo: play with the it
+unsigned long lastBeatTime = 0; // time of last detected peak
+int bpm = 0;
+
 void setup() {
   Serial.begin(9600);
+  // Serial.begin(115200); 
   Wire.begin();
 
   // Initialize the OLED display
@@ -48,8 +57,34 @@ void loop() {
   recordAccelRegisters();
   calculateSteps();
   updateTime();
+  BPM();
   updateDisplay();
   delay(100);
+}
+
+void BPM(){
+  Serial.print(F(","));
+
+  // int sensorValue = analogRead(A0);  
+  // Serial.print("HeartRate: ");
+  Serial.println(sensorValue);       
+  delay(10);
+
+  sensorValue = analogRead(A0);
+
+  if (sensorValue > threshold && (millis() - lastBeatTime > 300)) { 
+    // Detect peak only if 300ms (2 Hz) has passed to avoid double-counting
+    unsigned long currentTime = millis();
+    int beatInterval = currentTime - lastBeatTime;
+    lastBeatTime = currentTime;
+
+    bpm = 60000 / beatInterval;
+    // Serial.print("BPM: ");
+    Serial.print(F(","));
+    Serial.println(bpm);
+  }
+
+  delay(10);
 }
 
 void setupMPU() {
@@ -96,8 +131,8 @@ void calculateSteps() {
     stepFlag = 0;
   }
 
-  Serial.print("Steps = ");
-  Serial.println(stepCount);
+  // Serial.print("Steps = ");
+  Serial.print(stepCount);
 }
 
 void updateTime() {
@@ -124,13 +159,17 @@ void updateDisplay() {
   display.clearDisplay(); 
 
   // Display the step count
-  display.setTextSize(2);
+  display.setTextSize(1);
   display.setCursor(0, 0);
   display.print("Steps: ");
   display.print(stepCount);
 
+  display.setCursor(50, 0);
+  display.print("BPM: ");
+  display.print(bpm);
+
   // Display the time
-  display.setTextSize(2);
+  display.setTextSize(1);
   display.setCursor(0, 20);
   if (hours < 10) display.print("0");
   display.print(hours);
